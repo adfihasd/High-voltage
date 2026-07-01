@@ -1,0 +1,4 @@
+# 原始文档
+*.docx
+# 临时文件
+temp_images/

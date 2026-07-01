@@ -1,0 +1,1832 @@
+# 高电压期末复习网站 — 实现计划
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** 构建一个纯静态HTML复习网站，包含39个知识点，支持章节选择、触屏滑动切换、相关知识链接跳转、基于分数分布的题目预测。
+
+**Architecture:** 单文件 `index.html`，CSS + JS 全部内联。数据层用JS对象存储所有知识点、相关链接、预测题目；渲染层通过模板函数动态生成DOM；交互层处理触屏/键盘/点击事件。
+
+**Tech Stack:** 纯 HTML5 + CSS3 + Vanilla JS（ES6），零外部依赖。
+
+---
+
+### Task 1: 创建 HTML 骨架和 CSS 学术风格
+
+**Files:**
+- Create: `C:\Users\12767\Desktop\高电压\index.html`
+
+- [ ] **Step 1: 编写 HTML 骨架**
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>高电压期末复习</title>
+<style>
+/* CSS 全部写在这里 */
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- 顶部章节选择器 -->
+  <nav id="chapter-nav">
+    <div id="chapter-tabs"></div>
+  </nav>
+
+  <!-- 主内容区 -->
+  <main id="main-content">
+    <button id="btn-prev" class="nav-arrow" aria-label="上一个知识点">◀</button>
+    <div id="card-container">
+      <div id="knowledge-card">
+        <div id="card-scroll">
+          <!-- 知识点标题 -->
+          <h2 id="kp-title"></h2>
+          <div id="kp-badge"></div>
+          <!-- 知识点正文 -->
+          <div id="kp-content"></div>
+          <!-- 相关知识链接 -->
+          <section id="related-section">
+            <h3>相关知识链接</h3>
+            <div id="related-links"></div>
+          </section>
+          <!-- 预测题目 -->
+          <section id="questions-section">
+            <h3>预测题目</h3>
+            <div id="questions-list"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <button id="btn-next" class="nav-arrow" aria-label="下一个知识点">▶</button>
+  </main>
+
+  <!-- 章节边界确认浮层 -->
+  <div id="boundary-modal" class="modal-hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-dialog">
+      <p id="boundary-message"></p>
+      <div class="modal-buttons">
+        <button id="boundary-yes">是</button>
+        <button id="boundary-no">否</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// JavaScript 全部写在这里
+</script>
+</body>
+</html>
+```
+
+- [ ] **Step 2: 编写完整 CSS**
+
+```css
+/* === 基础变量与重置 === */
+:root {
+  --bg: #faf8f2;
+  --card-bg: #fffef9;
+  --text: #2c2416;
+  --text-secondary: #5c5347;
+  --border: #e0d8c8;
+  --accent: #8b4513;
+  --accent-light: #d4a76a;
+  --tag-bg: #f0ebe0;
+  --modal-overlay: rgba(44, 36, 22, 0.4);
+  --max-width: 720px;
+  --radius: 8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, "Times New Roman", serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+#app {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* === 章节选择器 === */
+#chapter-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+}
+
+#chapter-tabs {
+  display: flex;
+  overflow-x: auto;
+  gap: 4px;
+  padding: 0 12px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+#chapter-tabs::-webkit-scrollbar { display: none; }
+
+.chapter-tab {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.chapter-tab.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* === 主内容区 === */
+#main-content {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  padding: 12px 4px;
+  position: relative;
+  touch-action: pan-y;
+}
+
+.nav-arrow {
+  flex-shrink: 0;
+  width: 40px;
+  border: none;
+  background: transparent;
+  color: var(--accent-light);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  opacity: 0.6;
+}
+
+.nav-arrow:hover { opacity: 1; }
+.nav-arrow:active { opacity: 1; }
+
+@media (max-width: 768px) {
+  .nav-arrow { opacity: 0.35; width: 32px; }
+}
+
+#card-container {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+#knowledge-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  height: 100%;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+#knowledge-card.swipe-left {
+  transform: translateX(-60px);
+  opacity: 0;
+}
+
+#knowledge-card.swipe-right {
+  transform: translateX(60px);
+  opacity: 0;
+}
+
+#knowledge-card.swipe-in {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+#card-scroll {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px 20px 40px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* === 知识点内容 === */
+#kp-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+#kp-badge {
+  display: inline-block;
+  background: var(--tag-bg);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 2px 10px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+#kp-content {
+  font-size: 0.95rem;
+  line-height: 1.9;
+}
+
+#kp-content p { margin-bottom: 10px; }
+#kp-content strong { color: var(--accent); }
+#kp-content ul, #kp-content ol { padding-left: 20px; margin-bottom: 10px; }
+#kp-content li { margin-bottom: 4px; }
+
+/* === 相关知识链接 === */
+#related-section, #questions-section {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+#related-section h3, #questions-section h3 {
+  font-size: 0.9rem;
+  color: var(--accent);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.related-link {
+  display: block;
+  padding: 8px 12px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  background: var(--tag-bg);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.related-link:hover { background: var(--border); }
+.related-link .link-title { font-weight: 600; }
+.related-link .link-desc { color: var(--text-secondary); font-size: 0.8rem; margin-left: 6px; }
+
+/* === 预测题目 === */
+.question-block {
+  margin-bottom: 18px;
+  padding: 12px;
+  background: #fdfcfa;
+  border-left: 3px solid var(--accent-light);
+  border-radius: 0 6px 6px 0;
+}
+
+.question-type-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.question-item {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.question-item .q-num {
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-right: 4px;
+}
+
+.question-item .options {
+  padding-left: 20px;
+  margin-top: 2px;
+  color: var(--text-secondary);
+}
+
+.question-item .answer-hint {
+  font-size: 0.78rem;
+  color: var(--accent);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+/* === 章节边界弹窗 === */
+#boundary-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#boundary-modal.modal-hidden { display: none; }
+
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--modal-overlay);
+}
+
+.modal-dialog {
+  position: relative;
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 320px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+.modal-dialog p {
+  font-size: 1rem;
+  margin-bottom: 18px;
+  line-height: 1.6;
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modal-buttons button {
+  padding: 8px 28px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+#boundary-yes {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+#boundary-no {
+  background: var(--card-bg);
+  color: var(--text-secondary);
+}
+```
+
+- [ ] **Step 3: 验证** — 用浏览器打开 `index.html`，确认骨架 + 样式无错
+
+---
+
+### Task 2: 编写章节配置和知识点数据结构（骨架）
+
+**Files:**
+- Modify: `C:\Users\12767\Desktop\高电压\index.html`（在 `<script>` 标签内追加）
+
+- [ ] **Step 1: 在 `<script>` 开头定义章节配置**
+
+```javascript
+// ===== 章节配置 =====
+const CHAPTERS = [
+  { id: 1, title: '第一章', subtitle: '气体放电', score: 34, predictScore: 34 },
+  { id: 2, title: '第二章', subtitle: '电介质极化与击穿', score: 8, predictScore: 8 },
+  { id: 3, title: '第三章', subtitle: '固体电介质击穿', score: 3, predictScore: 3 },
+  { id: 4, title: '第四章', subtitle: '绝缘预防性试验', score: 5, predictScore: 5 },
+  { id: 5, title: '第五章', subtitle: '高电压试验', score: 5, predictScore: 5 },
+  { id: 7, title: '第七章', subtitle: '行波理论', score: 16, predictScore: 6 },
+  { id: 8, title: '第八章', subtitle: '防雷保护', score: 18, predictScore: 8 },
+  { id: 9, title: '第九章', subtitle: '内部过电压与绝缘配合', score: 11, predictScore: 11 },
+];
+
+const TOTAL_PREDICT_SCORE = CHAPTERS.reduce((sum, c) => sum + c.predictScore, 0); // = 80
+```
+
+- [ ] **Step 2: 定义知识点数组骨架（38个占位，内容在后续Task填充）**
+
+```javascript
+// ===== 知识点数据 =====
+// 每个知识点的结构:
+// { id: "章-序号", chapterId: 章ID, title: "标题", content: "HTML正文",
+//   related: [{ targetId, title, desc }], questions: [见Task 7格式] }
+
+const KNOWLEDGE_POINTS = [];
+// 内容将在后续 Task 中填充
+```
+
+---
+
+### Task 3: 填充第1-3章知识点数据（19个知识点）
+
+**Files:**
+- Modify: `C:\Users\12767\Desktop\高电压\index.html`（KNOWLEDGE_POINTS 数组部分）
+
+- [ ] **Step 1: 填充第1章知识点（11个）**
+
+将 `KNOWLEDGE_POINTS` 数组替换为包含以下内容：
+
+```javascript
+const KNOWLEDGE_POINTS = [
+
+  // ===== 第1章: 气体放电 (11个) =====
+  {
+    id: "1-1", chapterId: 1,
+    title: "电介质分类与外内绝缘",
+    content: `<p><strong>电介质按物质形态分类：</strong>气体介质、液体介质、固体介质。</p>
+<p><strong>电气设备的外绝缘：</strong>一般由气体介质和固体介质联合组成。</p>
+<p><strong>设备的内绝缘：</strong>由固体介质和液体介质联合组成。</p>
+<p>（外绝缘结构（空气+固体绝缘子）是典型的极不均匀电场，因此电晕放电和极性效应主要与外绝缘相关；内绝缘击穿后不可自恢复，因此采用三次冲击法而非多次。）</p>`,
+    related: [
+      { targetId: "1-8", title: "电晕放电与极性效应", desc: "电晕放电发生在极不均匀电场中，常见于外绝缘结构" },
+      { targetId: "5-4", title: "绝缘试验方法", desc: "内绝缘采用三次冲击法，外绝缘采用十五次冲击法" },
+    ],
+    questions: [] // 将在 Task 7 填充
+  },
+
+  {
+    id: "1-2", chapterId: 1,
+    title: "电离与热电离",
+    content: `<p><strong>电离：</strong>指电子脱离原子核的束缚而形成自由电子和正离子的过程。电离是后续碰撞电离、光电离、热电离、分级电离的统一定义，也是电介质击穿和击穿理论的基础。</p>
+<p><strong>热电离：</strong></p>
+<p>定义：由气体的热状态而引起的电离。</p>
+<p>形式：先导放电、滑闪放电、污闪。（先导放电即先导通道。）</p>
+<p>（与第三章热击穿中的"热不稳定过程"思想类似，均由热引发，但热电离是气体中产生带电粒子，热击穿是固体介质失去绝缘性能。）</p>`,
+    related: [
+      { targetId: "1-9", title: "先导通道", desc: "先导放电是热电离的一种形式" },
+      { targetId: "3-1", title: "热击穿", desc: "热击穿与热电离均由热引发，但机制和结果不同" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "1-3", chapterId: 1,
+    title: "光电离与碰撞电离",
+    content: `<p><strong>光电离：</strong></p>
+<p>定义：光辐射引起的气体分子的电离过程。（流注理论中的"空间光电离"即以此为基础。）</p>
+<p>条件①：hν ≥ Wi（光子能量 ≥ 逸出功），其中 h 为普朗克常量，c 为光速，λ 为光的波长（ν = c/λ），Wi 为逸出功。</p>
+<p>条件②：短波长的光（如各种射线、短波长紫外线）可引发光电离；可见光、红外线不可。</p>
+<p><strong>碰撞电离：</strong></p>
+<p>定义与条件：带电质点（带有动能 ½mv²）在电场作用下撞击气体原子，使其电离，产生正离子和自由电子。这是汤逊理论中α过程的核心机制，也是电子崩形成的基础。</p>
+<p>发生条件：带电质点的动能 > 气体原子的电离能。</p>`,
+    related: [
+      { targetId: "1-5", title: "α系数与自持放电条件", desc: "碰撞电离是α过程的核心" },
+      { targetId: "1-6", title: "汤逊理论", desc: "汤逊α过程基于碰撞电离" },
+      { targetId: "1-7", title: "流注理论", desc: "流注理论中的空间光电离基于光电离" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "1-4", chapterId: 1,
+    title: "分级电离与气体中负离子的形成",
+    content: `<p><strong>分级电离：</strong></p>
+<p>定义：原子或分子在激励态再获得能量而发生的电离。这是对碰撞电离的补充：当电子能量不足以一次电离时，可先激励再电离。</p>
+<p><strong>气体中负离子的形成：</strong></p>
+<p>SF₆气体含F，属于强电负性气体，具有灭弧能力。（第八章防雷中"防止雷击闪络后建立稳定的工频电弧"与此相关，SF₆常用于断路器等灭弧设备。）</p>`,
+    related: [
+      { targetId: "1-3", title: "光电离与碰撞电离", desc: "分级电离是碰撞电离的补充机制" },
+      { targetId: "8-4", title: "四道防线与八大措施", desc: "第三道防线灭弧与SF₆灭弧目的相同" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "1-5", chapterId: 1,
+    title: "α系数与自持放电条件",
+    content: `<p><strong>电子碰撞电离系数 α：</strong>代表一个电子沿电场方向行经1cm时平均发生的碰撞电离次数。α是汤逊理论自持放电条件的核心参数。</p>
+<p><strong>自持放电条件：</strong>γ(e^(αd) − 1) = 1 或 γe^(αd) = 1。这是汤逊理论的结论。</p>
+<p>（流注理论的自持放电条件为 e^(αd) = 常数 或 αd = 常数，两者形式不同但本质都是描述放电能够自行维持的临界条件。）</p>`,
+    related: [
+      { targetId: "1-3", title: "光电离与碰撞电离", desc: "α系数基于碰撞电离定义" },
+      { targetId: "1-6", title: "汤逊理论", desc: "自持放电条件是汤逊理论的核心结论" },
+      { targetId: "1-7", title: "流注理论", desc: "流注自持条件 e^(αd)=常数 与汤逊条件对比" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "1-6", chapterId: 1,
+    title: "汤逊理论",
+    content: `<p>pd值较小时，自持放电条件可用汤逊理论说明（巴申定律即建立在此理论基础上）。</p>
+<p>pd值较大时，用流注理论解释（两个理论的适用条件互补）。</p>
+<p>对于空气来说，这一pd值的临界值为<strong>26kPa·cm</strong>。</p>
+<p><strong>γ过程：</strong>由于阴极材料的表面逸出功比气体分子的电离能小很多，因而正离子碰撞阴极较易使阴极释放出电子。此外正负离子复合时以及分子由激励态跃迁回正常态时所产生光子到达阴极表面，都将引起阴极表面电离，统称为γ过程。γ过程与α过程共同构成汤逊自持放电条件 γ(e^(αd)−1)=1。γ过程中"光子到达阴极表面引起电离"与光电离（光子引起气体分子电离）同为光致电离，但作用对象不同：γ过程光子作用于阴极金属表面，光电离光子作用于气体分子。</p>
+<p><strong>汤逊理论适用范围：</strong>在低气压、pd较小的条件下适用（pd过小或过大，汤逊理论不再适用）。流注理论弥补了汤逊理论在pd较大时不适用的情况。</p>
+<p><strong>巴申定律：</strong>击穿电压Ub与pd的关系曲线，即Ub = f(pd)。此定律由汤逊理论推导而来，描述均匀电场中击穿电压与气压和间隙距离乘积的关系。</p>`,
+    related: [
+      { targetId: "1-5", title: "α系数与自持放电条件", desc: "汤逊自持放电条件的参数来源" },
+      { targetId: "1-7", title: "流注理论", desc: "汤逊与流注理论适用条件互补" },
+      { targetId: "5-2", title: "球隙测量与静电电压表", desc: "球隙测量利用巴申定律原理" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "1-7", chapterId: 1,
+    title: "流注理论",
+    content: `<p>在高气压、长气隙的情况下适用（与汤逊理论的低气压、pd小互补）。</p>
+<p>流注理论考虑了高气压、长气隙情况下不容忽视的若干因素，包括：电离出来的<strong>空间电荷会使电场畸变</strong>以及<strong>光子在放电过程中的作用</strong>。</p>
+<p>认为电子的碰撞电离和空间光电离是自持放电的主要因素，并充分注意到空间电荷对电场畸变的作用。</p>
+<p>流注理论认为：初始阶段气体放电以碰撞电离和电子崩的形式出现，当电子崩发展到一定程度后，某一初始电子崩的头部积聚到足够数量的空间电荷，就会引起新的强烈电离和二次电子崩，这种强烈电离和二次电子崩是由于空间电荷使局部电场大大增强以及发生空间光电离的结果，这时放电即转入新的流注阶段。</p>
+<p><strong>流注特点：</strong>电离强度很大、传播速度很快（超过初崩发展速度10倍以上）；出现流注后，放电便获得独立继续发展的能力，不再依赖外界电离因子的作用，出现流注的条件也就是自持放电条件。</p>
+<p><strong>出现流注的条件（对于均匀场来说）：</strong>e^(αd) = 常数 或 αd = 常数。</p>
+<p>（完整的气体放电路径：<strong>电子崩（碰撞电离+α过程）→ 流注（空间电荷畸变电场+光电离）→ 先导（热电离）→ 击穿/闪络</strong>，这是一条递进发展的物理链条。）</p>`,
+    related: [
+      { targetId: "1-6", title: "汤逊理论", desc: "汤逊与流注理论适用条件互补" },
+      { targetId: "1-8", title: "电晕放电与极性效应", desc: "空间电荷畸变电场是极性效应的本质" },
+      { targetId: "1-9", title: "先导通道", desc: "流注发展后转化为先导" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "1-8", chapterId: 1,
+    title: "电晕放电与极性效应",
+    content: `<p><strong>极不均匀场的电晕放电：</strong></p>
+<p>定义：在极不均匀场中，当电压升高到一定程度后，在空气间隙完全击穿之前，大曲率电极（曲率半径小）附近会有薄薄的发光层，这种放电现象称为电晕放电。</p>
+<p>电晕放电是极不均匀电场所特有的一种自持放电形式。电晕放电是局部自持放电，间隙仍未完全击穿。</p>
+<p><strong>极性效应：</strong></p>
+<p>定义：在电晕放电时，由于高场强下电极极性的不同、空间电荷的极性也不同，对放电发展影响也就不同，这就造成了不同极性的高场强电极电晕起始电压的不同以及间隙击穿电压的不同，称为极性效应。</p>
+<p>比较Ub（击穿电压）：<strong>负棒-正板 > 棒-棒 > 正棒-负板</strong></p>
+<p>比较Uc（电晕起始电压）：<strong>正棒-负板 > 负棒-正板</strong></p>
+<p>（Ub和Uc的大小顺序恰好相反，是极性效应的核心结论。）</p>`,
+    related: [
+      { targetId: "1-7", title: "流注理论", desc: "空间电荷畸变电场是极性效应的本质" },
+      { targetId: "1-11", title: "操作冲击特点", desc: "操作冲击电压同样存在极性效应" },
+      { targetId: "1-1", title: "电介质分类与外内绝缘", desc: "外绝缘结构是典型的极不均匀电场" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "1-9", chapterId: 1,
+    title: "先导通道",
+    content: `<p>定义：具有热电离过程的通道。</p>
+<p>流注发展到一定程度后，通道内温度升高，热电离成为主要电离机制，流注转化为先导。</p>
+<p>先导放电也是热电离的一种形式。</p>
+<p>（完整放电路径：电子崩→流注→先导→击穿，先导是流注之后、击穿之前的关键阶段。）</p>`,
+    related: [
+      { targetId: "1-2", title: "电离与热电离", desc: "先导放电是热电离的一种形式" },
+      { targetId: "1-7", title: "流注理论", desc: "流注发展后温度升高转化为先导" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "1-10", chapterId: 1,
+    title: "雷电冲击电压的标准波形",
+    content: `<p><strong>雷电冲击电压的标准波形：</strong></p>
+<p>T₁ = 1.2(1±30%)μs（波前时间），T₂ = 50(1±20%)μs（半峰值时间）</p>
+<p>不同极性的标准雷电波形可表示为：<strong>+1.2/50 μs</strong> 或 <strong>−1.2/50 μs</strong></p>
+<p>（第五章中电气设备内绝缘雷电冲击耐压试验用的就是此标准波形 1.2/50μs。）</p>`,
+    related: [
+      { targetId: "1-11", title: "操作冲击特点", desc: "操作冲击波形与雷电冲击波形对比" },
+      { targetId: "5-3", title: "工频、直流与冲击高压试验", desc: "冲击发生器产生标准雷电波形" },
+      { targetId: "5-4", title: "绝缘试验方法", desc: "雷电冲击耐压试验使用1.2/50μs全波" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "1-11", chapterId: 1,
+    title: "操作冲击电压的特点",
+    content: `<p><strong>操作冲击电压波形：</strong></p>
+<p>波前时间：Tcr = 250(1±20%)μs，半峰值时间：T₂ = 2500(1±20%)μs。</p>
+<p>（与雷电冲击波形对比：操作冲击的波前和半峰值时间远大于雷电冲击。）</p>
+<p><strong>操作冲击放电电压的特点（五点）：</strong></p>
+<ol>
+<li><strong>U形曲线：</strong>击穿电压与波前时间有关而与波尾时间无关</li>
+<li><strong>极性效应：</strong>正极性操作冲击的50%击穿电压比负极性低（与电晕放电的极性效应是同一物理本质在不同场景下的体现）</li>
+<li><strong>饱和现象</strong></li>
+<li><strong>分散性大</strong></li>
+<li><strong>邻近效应：</strong>接地物体靠近放电间隙会显著降低正极性击穿电压</li>
+</ol>`,
+    related: [
+      { targetId: "1-8", title: "电晕放电与极性效应", desc: "操作冲击和电晕放电的极性效应本质相同" },
+      { targetId: "1-10", title: "冲击电压波形", desc: "操作冲击与雷电冲击波形对比" },
+    ],
+    questions: []
+  },
+
+  // ===== 第2章: 电介质极化与击穿 (5个) =====
+  {
+    id: "2-1", chapterId: 2,
+    title: "相对介电常数",
+    content: `<p><strong>相对介电常数 εr：</strong></p>
+<p>定义：电容器充以某电介质时的电容量C与真空时电容量C₀的比值。</p>
+<p>（εr的大小与极化强度直接相关，极化越强，εr越大。）</p>`,
+    related: [
+      { targetId: "2-2", title: "极化基本型式", desc: "极化强度决定εr的大小" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "2-2", chapterId: 2,
+    title: "极化基本型式（电子式+离子式）",
+    content: `<p>极化是电介质在电场作用下，其束缚电荷相应于电场方向产生弹性位移现象和偶极子的取向现象，形成电矩。极化是第四章吸收比现象的物理根源。</p>
+<p><strong>最基本的极化型式：</strong></p>
+<p><strong>1. 电子式极化：</strong>存在于一切电介质中。特点：极化时间极短（10⁻¹⁵s）；弹性极化，没有能量损耗；温度及电场频率对极化影响很小；极化强度取决于电场强度。</p>
+<p><strong>2. 离子式极化：</strong>固体无机化合物大多数属于离子式极化（如云母、电瓷）。特点：极化过程极短（10⁻¹³s）；弹性极化；极化随温度升高而加强（热运动↑→离子间结合力↓→离子易移动→极化↑），电场频率影响很小。</p>
+<p>（温度对离子式极化和热击穿的影响方向相反：温度↑→极化↑，但温度↑→热击穿强度↓；两者是不同的物理机制。）</p>`,
+    related: [
+      { targetId: "2-3", title: "偶极子极化与夹层极化", desc: "四种极化的完整分类" },
+      { targetId: "4-3", title: "吸收比", desc: "极化是吸收现象的物理根源" },
+      { targetId: "3-1", title: "热击穿", desc: "温度对离子式极化和热击穿影响方向相反" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "2-3", chapterId: 2,
+    title: "偶极子极化与夹层极化",
+    content: `<p><strong>3. 偶极子极化：</strong>极性分子（具有固有的电矩，即正负电荷作用中心永不重合的分子）的极化，每个极性分子都是偶极子。</p>
+<p><strong>4. 夹层极化（特殊极化型式）：</strong>在电压重新分配的过程中，夹层界面上会积聚一些电荷，使整个介质的等值电容增大，这种极化称为夹层介质界面极化。夹层极化时间常数最大（可达数小时），是第四章吸收比测试的物理基础。</p>
+<p style="margin-top:12px"><strong>四种极化总结（按时间递增排列）：</strong></p>
+<table style="width:100%;font-size:0.82rem;border-collapse:collapse;margin:8px 0;">
+<tr style="background:#f0ebe0;"><th>极化种类</th><th>产生场合</th><th>所需时间</th><th>能量损耗</th><th>产生原因</th></tr>
+<tr><td>电子式极化</td><td>任何电介质</td><td>10⁻¹⁵s</td><td>无</td><td>束缚电子轨道偏移</td></tr>
+<tr><td>离子式极化</td><td>离子式结构电介质</td><td>10⁻¹³s</td><td>几乎没有</td><td>离子相对偏移</td></tr>
+<tr><td>偶极子极化</td><td>极性电介质</td><td>10⁻¹⁰~10⁻²s</td><td>有</td><td>偶极子定向排列</td></tr>
+<tr><td>夹层极化</td><td>多层介质交界面</td><td>10⁻¹s~数小时</td><td>有</td><td>自由电荷移动</td></tr>
+</table>
+<p>从电子式→离子式→偶极子→夹层，所需时间递增；电子式和离子式为弹性极化无损耗，偶极子和夹层极化有损耗；极化时间的长短决定了第四章吸收比测试中不同时间测得不同电阻值。</p>`,
+    related: [
+      { targetId: "2-2", title: "极化基本型式", desc: "四种极化的前两种" },
+      { targetId: "4-3", title: "吸收比", desc: "夹层极化是吸收比的物理基础" },
+      { targetId: "2-1", title: "相对介电常数", desc: "极化强度影响εr" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "2-4", chapterId: 2,
+    title: "固体电介质的电导",
+    content: `<p><strong>固体电介质的电导：</strong>按导电载流子种类可分为：</p>
+<ul>
+<li><strong>离子电导：</strong>载流子为离子，主要由电介质内部的杂质离子或本征离子在电场作用下迁移产生。离子电导率随温度升高而增大（温度↑→离子迁移率↑→电导↑）。</li>
+<li><strong>电子电导：</strong>载流子为自由电子，由电介质内部的自由电子在电场作用下定向运动产生。在强电场下电子电导可能成为主要导电机制。</li>
+</ul>
+<p>（固体电介质的电导是第四章绝缘电阻和泄漏电流的物理基础：绝缘电阻的大小取决于电介质的电导率，电导越大→绝缘电阻越小→泄漏电流越大。）</p>`,
+    related: [
+      { targetId: "4-2", title: "绝缘电阻与泄漏电流", desc: "电导是绝缘电阻和泄漏电流的物理基础" },
+      { targetId: "2-5", title: "电介质击穿与液体击穿理论", desc: "电导和击穿都是电介质的基本电气性能" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "2-5", chapterId: 2,
+    title: "电介质击穿与液体击穿理论",
+    content: `<p><strong>电介质的击穿：</strong></p>
+<p>定义：电介质的电导突然剧增，电介质便由绝缘状态变为导电状态，这一跃变现象称为电介质的击穿。</p>
+<p>（当电压达到自持放电条件——汤逊条件 γ(e^(αd)−1)=1 或流注条件 e^(αd)=常数——时，气体由绝缘变为导电，即气体击穿。第三章将详细展开固体电介质的击穿类型。）</p>
+<p><strong>液体电介质的击穿理论（三类）：</strong></p>
+<ol>
+<li>高度纯净去气液体介质的电击穿理论</li>
+<li>含气纯净液体介质的气泡击穿理论</li>
+<li>工程纯液体介质杂质击穿理论</li>
+</ol>
+<p>（与第三章固体介质的三种击穿类型形成对照：液体有电击穿/气泡击穿/杂质击穿，固体有电击穿/热击穿/不均匀介质击穿。）</p>`,
+    related: [
+      { targetId: "1-5", title: "α系数与自持放电条件", desc: "自持放电条件即气体击穿的临界条件" },
+      { targetId: "3-1", title: "热击穿", desc: "固体介质的击穿类型与液体对照" },
+      { targetId: "3-2", title: "电击穿", desc: "电击穿在液体和固体中都有对应理论" },
+    ],
+    questions: []
+  },
+
+  // ===== 第3章: 固体电介质击穿 (3个) =====
+  {
+    id: "3-1", chapterId: 3,
+    title: "热击穿",
+    content: `<p><strong>定义：</strong>热击穿是由于电介质内部热不稳定过程所造成的。当固体电介质加上电场时，电介质中发生的损耗会引起发热，使介质温度升高。</p>
+<p>（与第一章热电离类比：都是热过程引发，但热电离产生带电粒子，热击穿导致绝缘破坏；与第二章极化损耗关联：偶极子极化和夹层极化的能量损耗是热击穿的热量来源之一。）</p>
+<p><strong>影响因素：</strong>电介质热击穿不仅与材料性能有关，还在很大程度上与绝缘结构（电极配置与散热条件）及电压种类、环境温度等有关，因此热击穿强度不能看作是电介质材料本征特性参数。</p>
+<p>（与电击穿"是材料特性参数"形成对比：热击穿受外界影响大，不是本征参数；电击穿是本征参数。）</p>`,
+    related: [
+      { targetId: "1-2", title: "电离与热电离", desc: "热电离与热击穿均由热引发" },
+      { targetId: "2-3", title: "偶极子极化与夹层极化", desc: "极化损耗是热击穿的热量来源" },
+      { targetId: "3-2", title: "电击穿", desc: "热击穿与电击穿的本质区别" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "3-2", chapterId: 3,
+    title: "电击穿",
+    content: `<p><strong>定义：</strong>电击穿是在较低温度下，采用了消除边缘效应的电极装置等严格控制的条件下，进行击穿试验时所观察到的一种击穿现象。</p>
+<p>"较低温度"与热击穿的"热不稳定"相区别；"消除边缘效应"是为了避免不均匀电场，与第一章均匀场击穿条件呼应。</p>
+<p><strong>主要特征：</strong></p>
+<ul>
+<li>击穿场强高，实际绝缘系统不可能达到</li>
+<li>在一定温度范围内，击穿场强随温度升高</li>
+<li>均匀电场中电击穿场强反映了固体介质耐受电场作用能力的最大限度，它仅与材料的化学组成及性质有关，是材料特性参数，通常称之为<strong>耐电强度</strong>或<strong>电气强度</strong>。</li>
+</ul>
+<p>（电击穿场强即"耐电强度"，是第九章绝缘配合中确定绝缘水平的基础数据。）</p>`,
+    related: [
+      { targetId: "3-1", title: "热击穿", desc: "电击穿与热击穿的本质区别" },
+      { targetId: "3-3", title: "不均匀介质击穿", desc: "电击穿要求均匀场和严格控制条件" },
+      { targetId: "9-2", title: "绝缘配合概念与目的", desc: "耐电强度是绝缘配合的基础数据" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "3-3", chapterId: 3,
+    title: "不均匀电介质的击穿",
+    content: `<p><strong>定义：</strong>指包括固体、液体或气体组合构成的绝缘结构中的一种击穿形式。</p>
+<p>实际绝缘结构多为组合介质（如第一章所述的外绝缘=气体+固体，内绝缘=固体+液体），所以不均匀介质击穿是工程中最常见的击穿形式。与第一章均匀场条件下的击穿理论是理想化模型与工程实际的对应关系。</p>`,
+    related: [
+      { targetId: "1-1", title: "电介质分类与外内绝缘", desc: "外绝缘和内绝缘都是组合介质结构" },
+      { targetId: "3-2", title: "电击穿", desc: "电击穿是均匀介质理想模型，不均匀击穿是工程实际" },
+    ],
+    questions: []
+  },
+];
+```
+
+- [ ] **Step 2: 验证** — 在浏览器控制台检查 `KNOWLEDGE_POINTS.length` 应为 19
+
+---
+
+### Task 4: 填充第4-7章知识点数据（12个知识点）
+
+**Files:**
+- Modify: `C:\Users\12767\Desktop\高电压\index.html`（KNOWLEDGE_POINTS 数组后半部分）
+
+- [ ] **Step 1: 追加第4-7章知识点**
+
+在 `]；`（KNOWLEDGE_POINTS 闭合）之前追加：
+
+```javascript
+  // ===== 第4章: 绝缘预防性试验 (3个) =====
+  {
+    id: "4-1", chapterId: 4,
+    title: "预防性试验概述",
+    content: `<p><strong>绝缘的预防性试验是非破坏性试验。</strong></p>
+<p>（与第五章的破坏性试验形成对照：第四章是非破坏性的——测参数不损坏绝缘；第五章是破坏性的——施加高电压直至击穿。）</p>
+<p>主要的预防性试验项目：绝缘电阻、泄漏电流、吸收比。</p>`,
+    related: [
+      { targetId: "4-2", title: "绝缘电阻与泄漏电流", desc: "预防性试验的两个基本项目" },
+      { targetId: "4-3", title: "吸收比", desc: "预防性试验的重要项目" },
+      { targetId: "5-1", title: "试验变压器串级装置", desc: "第五章为破坏性试验，与本章对照" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "4-2", chapterId: 4,
+    title: "绝缘电阻与泄漏电流",
+    content: `<p><strong>绝缘电阻：</strong>指绝缘材料在两个电极之间所表现出来的电阻，通常以欧姆（Ω）为单位，是一切电介质和绝缘结构绝缘状态最基本的综合特性参数，是反映绝缘性能最基本指标之一。通常规定加压1min时测得的电阻值作为该试品的绝缘电阻。</p>
+<p><strong>泄漏电流：</strong>原理与绝缘电阻相似，指通过绝缘材料的电流，所加直流电压比绝缘电阻测试时高得多。泄漏电流是绝缘材料性能的重要指标之一，因为它反映了绝缘材料导电性能和漏电性能。</p>
+<p>（泄漏电流与绝缘电阻本质上是同一物理现象的不同表述方式：电阻=电压/电流。）</p>`,
+    related: [
+      { targetId: "4-3", title: "吸收比", desc: "吸收比基于绝缘电阻的时变特性" },
+      { targetId: "4-1", title: "预防性试验概述", desc: "绝缘电阻和泄漏电流是基本预防性试验" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "4-3", chapterId: 4,
+    title: "吸收比",
+    content: `<p><strong>吸收比：</strong>组合绝缘或层式结构在直流电压下的吸收现象，表现为外电路中出现一个随时间衰减的吸收电流。取电流衰减过程中的两个瞬间测得的两个电流值或两个相应的绝缘电阻值之比值，即为吸收比。可用于检验绝缘介质是否严重受潮或存在局部缺陷。</p>
+<p>通常测定的是<strong>15s和60s</strong>时的绝缘电阻值R₁₅和R₆₀，并把后者对前者的比值作为绝缘介质的吸收比K。</p>
+<p>（吸收比的物理根源是第二章的夹层极化：夹层极化时间常数大（可达数秒至数小时），造成电流/电阻在加压后随时间变化。选取15s和60s的原因：夹层极化的时间常数在秒级以上，15s时吸收电流仍在明显衰减中，60s时已趋于稳定。R₆₀/R₁₅>1说明介质不均匀、有夹层界面；若介质受潮，泄漏电流增大，吸收现象被掩盖，K→1，故可通过吸收比判断受潮情况。）</p>`,
+    related: [
+      { targetId: "2-3", title: "偶极子极化与夹层极化", desc: "夹层极化是吸收比的物理根源" },
+      { targetId: "4-2", title: "绝缘电阻与泄漏电流", desc: "吸收比基于绝缘电阻测量" },
+    ],
+    questions: []
+  },
+
+  // ===== 第5章: 高电压试验 (4个) =====
+  {
+    id: "5-1", chapterId: 5,
+    title: "试验变压器串级装置",
+    content: `<p>电气绝缘高电压试验是<strong>破坏性试验</strong>（与第四章预防性试验的非破坏性对照）。</p>
+<p><strong>试验变压器串级装置：</strong></p>
+<ul>
+<li>串接台数越多，装置利用系数越低</li>
+<li>随着串接数的增加，整套串接试验变压器的总漏抗值急剧增加，因此串级试验变压器的<strong>串接数一般不超过3</strong>，这是串级装置的固有缺点</li>
+</ul>`,
+    related: [
+      { targetId: "4-1", title: "预防性试验概述", desc: "破坏性vs非破坏性试验的对照" },
+      { targetId: "5-3", title: "工频、直流与冲击高压试验", desc: "三类高电压试验共同组成破坏性试验" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "5-2", chapterId: 5,
+    title: "球隙测量与静电电压表",
+    content: `<p><strong>球隙测量：</strong>用球隙测量工频电压时，应取连续<strong>三次</strong>击穿电压的平均值，相邻两次击穿间隔时间一般<strong>不小于1min</strong>。</p>
+<p>（球隙利用的是均匀电场中空气间隙的击穿电压与间隙距离的确定关系，即利用第一章巴申定律的原理来测量电压——球隙测量的是电压的<strong>峰值</strong>。）</p>
+<p><strong>静电电压表：</strong>电场作用力与电压二次方成正比，所以它的偏转方向与被测电压的极性无关。因此静电电压表既能测量直流电压又能测量交流电压；所测到的为电压的<strong>有效值</strong>。</p>
+<p>（球隙测峰值，静电电压表测有效值——两者互补。）</p>`,
+    related: [
+      { targetId: "1-6", title: "汤逊理论", desc: "球隙测量基于巴申定律" },
+      { targetId: "5-3", title: "工频、直流与冲击高压试验", desc: "三类高电压产生后进行测量" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "5-3", chapterId: 5,
+    title: "工频、直流与冲击高压试验",
+    content: `<p><strong>电气绝缘高电压试验</strong>（破坏性试验）由以下三类试验共同组成：</p>
+<p><strong>1. 工频高压试验：</strong>利用试验变压器产生工频交流高电压，是检验电气设备绝缘强度的基本方法。试验变压器的串级连接可实现更高电压（串接数一般不超过3）。</p>
+<p><strong>2. 直流高压试验：</strong>用于产生直流高电压，适用于大电容试品（如电缆）的绝缘试验，可避免大电容电流。</p>
+<p><strong>3. 冲击高压试验：</strong>多级冲击电压发生器的基本工作原理："<strong>并联充电，串联放电</strong>"。用于产生第一章所述的标准雷电冲击电压波形 1.2/50μs 和操作冲击电压波形 250/2500μs。</p>`,
+    related: [
+      { targetId: "5-1", title: "试验变压器串级装置", desc: "试验变压器用于工频高压试验" },
+      { targetId: "1-10", title: "冲击电压波形", desc: "冲击发生器产生标准雷电波形" },
+      { targetId: "1-11", title: "操作冲击特点", desc: "冲击发生器也产生操作冲击波形" },
+      { targetId: "5-4", title: "绝缘试验方法", desc: "三类高电压用于绝缘试验" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "5-4", chapterId: 5,
+    title: "绝缘试验方法",
+    content: `<p><strong>内绝缘雷电冲击耐压试验：</strong>采用<strong>三次冲击法</strong>，即对被试品施加三次正极性和三次负极性雷电冲击试验电压（1.2/50μs全波）。</p>
+<p>（内绝缘对应第一章的内绝缘定义（固体+液体介质联合组成）。）</p>
+<p><strong>外绝缘冲击高压试验：</strong>通常可采用<strong>15次冲击法</strong>，相邻两次冲击的时间间隔应不小于1min。</p>
+<p>（外绝缘对应第一章的外绝缘定义（气体+固体介质联合组成）。15次法与3次法的区别根源在于：内绝缘击穿后不可自恢复（固体/液体介质击穿即永久损坏），只能用少量次数；外绝缘（空气间隙）击穿后可自恢复，可多次试验取统计值，为第九章统计法绝缘配合提供数据。）</p>`,
+    related: [
+      { targetId: "1-1", title: "电介质分类与外内绝缘", desc: "内绝缘和外绝缘的定义" },
+      { targetId: "1-10", title: "冲击电压波形", desc: "使用1.2/50μs标准波形" },
+      { targetId: "9-3", title: "绝缘配合方法", desc: "统计法需要多次试验数据" },
+    ],
+    questions: []
+  },
+
+  // ===== 第7章: 行波理论 (5个) =====
+  {
+    id: "7-1", chapterId: 7,
+    title: "过电压定义与行波传播",
+    content: `<p><strong>过电压：</strong>是指电力系统中出现的对绝缘有危险的电压升高和电位差升高。</p>
+<p>（过电压分为外部过电压（第八章雷电过电压）和内部过电压（第九章操作过电压、暂时过电压）两大类；这两类过电压都以行波形式沿线路传播，因此本章的行波理论是第八、九章的共同基础。）</p>
+<p>电压波和电流波沿线路的传播过程实质上就是电磁波沿线路传播的过程。</p>`,
+    related: [
+      { targetId: "8-1", title: "雷电过电压与雷暴日", desc: "雷电过电压是外部过电压" },
+      { targetId: "9-1", title: "内部过电压分类", desc: "内部过电压与外部过电压构成完整分类" },
+    ],
+    hasCalc: true, // 本章有计算题
+    questions: []
+  },
+
+  {
+    id: "7-2", chapterId: 7,
+    title: "波阻抗概念",
+    content: `<p><strong>波阻抗 Z：</strong></p>
+<p>(1) 定义：表示了线路中同方向传播的电流波与电压波的数值关系。</p>
+<p>(2) 不同极性的行波向不同的方向传播，需要规定一个正方向。电压波的符号只取决于导线对地电容上相应电荷的符号，和运动方向无关。而电流波的符号不但与相应的电荷符号有关，而且与电荷运动方向有关。</p>
+<p>(3) 习惯规定：沿x正方向运动的正电荷相应的电流波为正方向。在规定行波电流正方向的前提下，电流前行波i与电压前行波u总是同号，而电流反行波i与电压反行波u总是异号。</p>
+<p>（正因如此，总电压与总电流之比不等于波阻抗。）</p>`,
+    related: [
+      { targetId: "7-3", title: "行波折射反射", desc: "波阻抗是折射反射计算的基础" },
+      { targetId: "7-5", title: "波阻抗与电阻区别", desc: "波阻抗和电阻的物理本质不同" },
+    ],
+    hasCalc: true,
+    questions: []
+  },
+
+  {
+    id: "7-3", chapterId: 7,
+    title: "行波的折射和反射",
+    content: `<p>（第八章中雷电侵入波进入变电所时，在不同波阻抗设备的连接处发生折射和反射，是避雷器保护原理的基础。）</p>
+<p><strong>折射系数：</strong>α = 2Z₂/(Z₁+Z₂)</p>
+<p><strong>反射系数：</strong>β = (Z₂−Z₁)/(Z₁+Z₂)</p>
+<p><strong>关系：</strong>α = 1+β（由前两式代数推导得出，表明折射波=入射波+反射波。）</p>`,
+    related: [
+      { targetId: "7-2", title: "波阻抗概念", desc: "波阻抗Z₁、Z₂是折射反射公式的参数" },
+      { targetId: "7-4", title: "彼德逊法则", desc: "彼德逊法则是求解折射反射的实用方法" },
+      { targetId: "8-2", title: "防雷保护装置与避雷器", desc: "避雷器利用折射反射原理保护设备" },
+    ],
+    hasCalc: true,
+    questions: []
+  },
+
+  {
+    id: "7-4", chapterId: 7,
+    title: "彼德逊法则",
+    content: `<p><strong>集中参数等效电路（彼德逊法则）：</strong></p>
+<p>(1) 定义：任意波形的前行波U₁达到A点后，观察A点的电压波形变化情况。Z₂可为长线路，也可是任意的集中阻抗。当计算A点电压时，可将分布参数等效电路转换成集中参数等效电路。其中波阻抗Z用数值相等的等效电阻来替代，把入射电压波U₁f的2倍2U₁f作为等效电压源，这就是计算节点电压U₂的等效电路法则，也称为彼德逊法则。</p>
+<p>（彼德逊法则是求解行波折射反射问题的实用工具，将分布参数问题转化为集中参数电路求解。）</p>
+<p>(2) 适用条件：首先入射波必须是沿一条分布参数线路传播过来；其次，它只适用于节点A之后的任何一条线路末端产生的反射波尚未回到A点之前。</p>`,
+    related: [
+      { targetId: "7-3", title: "行波折射反射", desc: "彼德逊法则用于求解折射反射问题" },
+      { targetId: "7-2", title: "波阻抗概念", desc: "等效电阻替代波阻抗Z" },
+    ],
+    hasCalc: true,
+    questions: []
+  },
+
+  {
+    id: "7-5", chapterId: 7,
+    title: "波阻抗与集中参数的电阻的区别",
+    content: `<p><strong>总电压与总电流的比值（当导线上既有前行波又有反行波时）：</strong></p>
+<p>u/i = (uf+ub)/(if+ib) = Z·(uf+ub)/(uf−ub) ≠ Z</p>
+<p>（区别波阻抗Z与普通电阻：波阻抗仅对同方向的行波成立，前行波+反行波叠加时，总电压/总电流≠Z。）</p>
+<p><strong>波阻抗与电阻的四个本质区别：</strong></p>
+<ol>
+<li>波阻抗表示向同一方向传播的电压波和电流波之间比值的大小；电磁波通过波阻抗为Z的无损线路时，其能量以电磁能的形式储存于周围介质中，而不像通过电阻那样被消耗掉。（波阻抗不消耗有功功率，电阻消耗有功功率。）</li>
+<li>为了区别不同方向的行波，Z的前面应有正负号。</li>
+<li>如果导线上有前行波又有反行波，两波相遇时，总电压和总电流的比值不再等于波阻抗。</li>
+<li>波阻抗的数值Z只与导线单位长度的电感L₀和电容C₀有关，而与线路长度无关。（电阻R=ρ·L/S与长度有关，波阻抗与长度无关。）</li>
+</ol>`,
+    related: [
+      { targetId: "7-2", title: "波阻抗概念", desc: "波阻抗的定义和性质" },
+      { targetId: "7-3", title: "行波折射反射", desc: "折射反射中波阻抗是关键参数" },
+    ],
+    hasCalc: true,
+    questions: []
+  },
+```
+
+- [ ] **Step 2: 验证** — `KNOWLEDGE_POINTS.length` 应为 31
+
+---
+
+### Task 5: 填充第8-9章知识点数据（8个知识点）
+
+**Files:**
+- Modify: `C:\Users\12767\Desktop\高电压\index.html`
+
+- [ ] **Step 1: 追加第8-9章知识点**
+
+在 `]；` 之前追加：
+
+```javascript
+  // ===== 第8章: 防雷保护 (5个) =====
+  {
+    id: "8-1", chapterId: 8,
+    title: "雷电过电压与雷暴日",
+    content: `<p><strong>雷电过电压：</strong>是雷云放电引起的电力系统过电压，又称大气过电压、外部过电压。雷电过电压可分为直击雷过电压和感应雷过电压两种。</p>
+<p>（外部过电压与第九章内部过电压对应，构成过电压的完整分类；直击雷和感应雷的保护装置不同。）</p>
+<p><strong>雷暴日：</strong>指该地区平均一年内有雷电放电的平均天数，单位 d/a。</p>
+<p><strong>雷暴小时：</strong>指平均一年内的有雷电的小时数，单位 h/a。</p>
+<p><strong>雷区分类（根据雷暴日划分）：</strong></p>
+<ul>
+<li>平均雷暴日不超过15日：少雷区</li>
+<li>超过15日但不超过40日：中雷区</li>
+<li>超过40日但不超过90日：多雷区</li>
+<li>超过90日：强雷区</li>
+</ul>`,
+    related: [
+      { targetId: "7-1", title: "过电压定义与行波传播", desc: "雷电过电压是外部过电压" },
+      { targetId: "9-1", title: "内部过电压分类", desc: "外部vs内部过电压" },
+    ],
+    hasCalc: true, // 本章有计算题
+    questions: []
+  },
+
+  {
+    id: "8-2", chapterId: 8,
+    title: "防雷保护装置与避雷器",
+    content: `<p><strong>基本的防雷保护装置：</strong>避雷针、避雷线、避雷器、防雷接地、电抗线圈、电容器组、消弧线圈和自动重合闸等。</p>
+<p>（这些装置分别对应"四道防线"的不同层次：避雷针/避雷线→第一道防线；避雷器→第二、三道防线；自动重合闸→第四道防线。）</p>
+<ul>
+<li>避雷针、避雷线用于<strong>防止直击雷过电压</strong></li>
+<li>避雷器用于<strong>防止沿输电线路侵入变电所的感应雷过电压</strong></li>
+</ul>
+<p><strong>避雷器：</strong>实质上是一种过电压限制器，与被保护的电气设备并联连接。</p>
+<p>（并联在被保护设备两端，正常时高阻抗不影响运行，过电压时低阻抗限制电压。过电压波沿线路（波阻抗Z₁）侵入，到达避雷器处，避雷器动作后呈现极低阻抗（Z₂→0），由折射系数α=2Z₂/(Z₁+Z₂)→0可知过电压波几乎全部被反射，从而保护设备。）</p>`,
+    related: [
+      { targetId: "7-3", title: "行波折射反射", desc: "避雷器利用折射反射原理" },
+      { targetId: "8-4", title: "四道防线与八大措施", desc: "防雷装置与四道防线的对应" },
+    ],
+    hasCalc: true,
+    questions: []
+  },
+
+  {
+    id: "8-3", chapterId: 8,
+    title: "耐雷水平与雷击跳闸率",
+    content: `<p><strong>输电线路防雷性能的两个指标：</strong></p>
+<p><strong>(1) 耐雷水平：</strong>指雷击线路绝缘不发生闪络的最大雷电流幅值（单位为kA）。耐雷水平越高，线路防雷性能越好。</p>
+<p><strong>(2) 雷击跳闸率：</strong>指折算到雷暴日数为40的标准条件下，每100km线路每年由雷击引起的跳闸次数。雷击跳闸率越低，说明线路防雷性能越好。</p>
+<p>（耐雷水平与雷击跳闸率是关联的：耐雷水平高则雷击跳闸率低。）</p>`,
+    related: [
+      { targetId: "8-1", title: "雷电过电压与雷暴日", desc: "雷暴日是跳闸率折算的标准条件" },
+      { targetId: "8-4", title: "四道防线与八大措施", desc: "防雷措施的目的就是提高耐雷水平" },
+    ],
+    hasCalc: true,
+    questions: []
+  },
+
+  {
+    id: "8-4", chapterId: 8,
+    title: "四道防线与八大防雷措施",
+    content: `<p><strong>输电线路防雷的"四道防线"（层层递进）：</strong></p>
+<ol>
+<li>防止输电线路导线遭受直击雷（→架设避雷线/避雷针——阻挡雷击）</li>
+<li>防止输电线路受雷击后绝缘发生闪络（→降低接地电阻/加强绝缘——即使被雷击中也不闪络）</li>
+<li>防止雷击闪络后建立稳定的工频电弧（→采用中性点非有效接地/装设避雷器——即使闪络也不形成持续电弧。灭弧的思路与SF₆灭弧一脉相承：SF₆利用强电负性吸附自由电子使电弧熄灭，非有效接地利用减小接地电流使电弧自然熄灭。）</li>
+<li>防止工频电弧后引起中断电力供应（→自动重合闸——即使跳闸也能自动恢复供电）</li>
+</ol>
+<p><strong>八大防雷措施：</strong></p>
+<ol>
+<li>架设避雷线（→第一道防线）</li>
+<li>降低杆塔接地电阻（→第二道防线：接地电阻R越小，雷电流I入地时杆塔电位U=IR越小→绝缘子两端电压差越小→越不易闪络→耐雷水平提高）</li>
+<li>架设耦合地线</li>
+<li>采用不平衡绝缘方式</li>
+<li>采用中性点非有效接地方式（→第三道防线：非有效接地系统中单相接地电流小，电弧易熄灭）</li>
+<li>装设避雷器</li>
+<li>加强绝缘（→第二道防线）</li>
+<li>装设自动重合闸装置（→第四道防线）</li>
+</ol>`,
+    related: [
+      { targetId: "8-2", title: "防雷保护装置与避雷器", desc: "防雷装置对应不同防线" },
+      { targetId: "8-5", title: "接地电阻/接触电压/跨步电压", desc: "降低接地电阻是第二道防线" },
+      { targetId: "1-4", title: "分级电离与负离子", desc: "SF₆灭弧与第三道防线目的一致" },
+    ],
+    hasCalc: true,
+    questions: []
+  },
+
+  {
+    id: "8-5", chapterId: 8,
+    title: "接地电阻、接触电压与跨步电压",
+    content: `<p><strong>(1) 接地电阻：</strong>接地装置对地电位u与通过接地极流入地中电流i的比值。降低接地电阻是防雷的关键措施之一。</p>
+<p><strong>(2) 接触电压Ut：</strong>当人触及漏电外壳，加于人手脚之间的电压。通常按人在地面上离设备水平距离为0.8m处与设备外壳、架构或墙壁离地面的垂直距离1.8m处两点间的电位差，称为接触电位差，即接触电压Ut。</p>
+<p><strong>(3) 跨步电压Us：</strong>当人在分布电位区域内跨开一步，两脚间（水平距离0.8m）的电位差，称为跨步电位差，即跨步电压Us。</p>
+<p>（接触电压和跨步电压都是接地装置在散流时地面上分布电位造成的人身安全问题，两者水平距离标准均为0.8m。）</p>`,
+    related: [
+      { targetId: "8-4", title: "四道防线与八大措施", desc: "降低接地电阻是第二道防线关键措施" },
+      { targetId: "8-2", title: "防雷保护装置与避雷器", desc: "防雷接地是基本防雷装置之一" },
+    ],
+    hasCalc: true,
+    questions: []
+  },
+
+  // ===== 第9章: 内部过电压与绝缘配合 (3个) =====
+  {
+    id: "9-1", chapterId: 9,
+    title: "内部过电压及其分类",
+    content: `<p><strong>内部过电压：</strong>在电力系统中，经常出现一类电压，其产生根源在电力系统内部，通常都是因系统内部电磁能量的积聚和转换而引起，称之为内部过电压。</p>
+<p>（与第八章外部过电压（雷电过电压）构成过电压的完整分类；根源不同：内部来自系统本身操作或参数变化，外部来自雷云放电。）</p>
+<p><strong>内部过电压分类：</strong>可按其产生原因分解为<strong>操作过电压</strong>和<strong>暂时过电压</strong>。</p>
+<p>（操作过电压由开关操作、故障等引起，持续时间短；暂时过电压由谐振、工频电压升高等引起，持续时间较长。）</p>`,
+    related: [
+      { targetId: "7-1", title: "过电压定义与行波传播", desc: "过电压的总体定义" },
+      { targetId: "8-1", title: "雷电过电压与雷暴日", desc: "外部过电压与内部过电压对应" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "9-2", chapterId: 9,
+    title: "绝缘配合的概念与目的",
+    content: `<p><strong>绝缘配合是高电压技术的一个中心问题：</strong>（绝缘配合是全课程的落脚点——前八章的知识最终服务于确定设备的绝缘水平。）</p>
+<ul>
+<li>根据设备在系统中可能承受的过电压并考虑保护装置和设备绝缘的特性来确定耐受强度</li>
+<li>以最低的经济成本把各种过电压所引起的绝缘损坏概率降低到可接受的水平</li>
+<li>即最终确定电气设备的绝缘水平</li>
+<li>要在技术上处理好<strong>各种电压、各种限压措施和设备绝缘耐受能力三者之间的配合关系</strong></li>
+</ul>
+<p><strong>三个要素：</strong></p>
+<ol>
+<li>系统电压（第七章过电压+第八章雷电过电压+第九章内部过电压）</li>
+<li>限压措施（第八章避雷器等防雷保护装置）</li>
+<li>设备绝缘耐受能力（第三章耐电强度+第五章试验验证）</li>
+</ol>
+<p>三者的关系是：限压措施将过电压限制到绝缘耐受水平以下。</p>
+<p>在经济上协调投资费、维护费和事故损失费三者之间的关系。</p>`,
+    related: [
+      { targetId: "3-2", title: "电击穿", desc: "耐电强度是确定绝缘水平的基础" },
+      { targetId: "8-2", title: "防雷保护装置与避雷器", desc: "避雷器是限压措施的核心" },
+      { targetId: "9-3", title: "绝缘配合方法", desc: "绝缘配合的具体实施方法" },
+    ],
+    questions: []
+  },
+
+  {
+    id: "9-3", chapterId: 9,
+    title: "绝缘配合的方法",
+    content: `<p><strong>绝缘配合：</strong></p>
+<p>(1) 定义：绝缘配合就是根据设备在系统中可能承受的各种电压（工作电压及过电压），并考虑限压装置的特性和设备的绝缘特性来确定必要的耐受强度，把作用于设备上的各种电压所引起的绝缘结构损坏和影响连续运行的概率，降低到在经济和运行上能接受的水平。</p>
+<p>(2) 最终目的：确定电气设备的绝缘水平。所谓电气设备的绝缘水平是指设备可以承受（不发生闪络、放电或其他损坏）的试验电压值。</p>
+<p>（绝缘水平以试验电压值体现，与第五章的高电压试验方法衔接：绝缘水平定了，用什么试验电压去检验就定了。）</p>
+<p>(3) <strong>基本方法：</strong>多级配合、惯用法、统计法、简化统计法。</p>
+<p>（惯用法对应确定性的试验电压（如第五章三次冲击法），统计法需要大量的试验数据支撑（如第五章15次冲击法提供的统计数据）；多级配合是指不同电压等级的绝缘水平分级配置，与避雷器（第八章）的保护水平逐级配合。）</p>`,
+    related: [
+      { targetId: "9-2", title: "绝缘配合概念与目的", desc: "方法是实现绝缘配合的手段" },
+      { targetId: "5-4", title: "绝缘试验方法", desc: "试验方法对应不同的绝缘配合方法" },
+      { targetId: "8-2", title: "防雷保护装置与避雷器", desc: "避雷器保护水平与绝缘水平多级配合" },
+    ],
+    questions: []
+  },
+```
+
+- [ ] **Step 2: 验证** — `KNOWLEDGE_POINTS.length` 应为 39
+
+---
+
+### Task 6: 实现导航系统
+
+**Files:**
+- Modify: `C:\Users\12767\Desktop\高电压\index.html`（在 `<script>` 末尾追加）
+
+- [ ] **Step 1: 实现核心导航逻辑**
+
+```javascript
+// ===== 应用状态 =====
+let currentChapterId = 1;
+let currentKpIndex = 0;          // 在当前章的数组中的索引
+
+// ===== 辅助函数 =====
+function getChapterKPs(chapterId) {
+  return KNOWLEDGE_POINTS.filter(kp => kp.chapterId === chapterId);
+}
+
+function getGlobalKP(chapterId, index) {
+  const kps = getChapterKPs(chapterId);
+  return kps[index] || null;
+}
+
+function findGlobalIndex(kp) {
+  return KNOWLEDGE_POINTS.findIndex(k => k.id === kp.id);
+}
+
+// ===== 渲染函数 =====
+function renderChapterTabs() {
+  const container = document.getElementById('chapter-tabs');
+  container.innerHTML = CHAPTERS.map(ch => {
+    const activeClass = ch.id === currentChapterId ? ' active' : '';
+    return `<div class="chapter-tab${activeClass}" data-chapter="${ch.id}">
+      ${ch.title} ${ch.subtitle}
+    </div>`;
+  }).join('');
+
+  // 滚动当前章节到可视区
+  const activeTab = container.querySelector('.chapter-tab.active');
+  if (activeTab) {
+    activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }
+}
+
+function renderKnowledgePoint() {
+  const kp = getGlobalKP(currentChapterId, currentKpIndex);
+  if (!kp) return;
+
+  document.getElementById('kp-title').textContent = kp.title;
+  document.getElementById('kp-badge').textContent =
+    `第${currentChapterId}章 · 知识点 ${currentKpIndex + 1}/${getChapterKPs(currentChapterId).length}`;
+  document.getElementById('kp-content').innerHTML = kp.content;
+  renderRelatedLinks(kp);
+  renderQuestions(kp);
+
+  // 滚动到顶部
+  document.getElementById('card-scroll').scrollTop = 0;
+}
+
+function renderRelatedLinks(kp) {
+  const container = document.getElementById('related-links');
+  if (!kp.related || kp.related.length === 0) {
+    container.innerHTML = '<p style="color:#999;font-size:0.85rem;">暂无相关链接</p>';
+    return;
+  }
+  container.innerHTML = kp.related.map(r => {
+    const target = KNOWLEDGE_POINTS.find(k => k.id === r.targetId);
+    const chapterLabel = target ? `第${target.chapterId}章` : '';
+    return `<div class="related-link" data-target="${r.targetId}" role="button" tabindex="0">
+      <span class="link-title">${r.title}</span>
+      <span class="link-desc">—— ${r.desc}（${chapterLabel}）</span>
+    </div>`;
+  }).join('');
+}
+
+// ===== 导航操作 =====
+function navigateTo(chapterId, kpIndex, direction) {
+  const kps = getChapterKPs(chapterId);
+
+  // 检查章节边界
+  if (kpIndex < 0) {
+    // 左边界：进入上一章
+    showBoundaryModal(chapterId, 'prev');
+    return;
+  }
+  if (kpIndex >= kps.length) {
+    // 右边界：进入下一章
+    showBoundaryModal(chapterId, 'next');
+    return;
+  }
+
+  // 正常导航
+  const card = document.getElementById('knowledge-card');
+  const animClass = direction === 'left' ? 'swipe-left' : direction === 'right' ? 'swipe-right' : 'swipe-in';
+
+  // 滑出动画
+  if (direction) {
+    card.classList.add(animClass);
+  }
+
+  setTimeout(() => {
+    currentChapterId = chapterId;
+    currentKpIndex = kpIndex;
+    renderChapterTabs();
+    renderKnowledgePoint();
+    card.classList.remove('swipe-left', 'swipe-right');
+    card.classList.add('swipe-in');
+    setTimeout(() => card.classList.remove('swipe-in'), 300);
+    updateURL();
+  }, direction ? 150 : 0);
+}
+
+function goNext() {
+  const kps = getChapterKPs(currentChapterId);
+  if (currentKpIndex < kps.length - 1) {
+    navigateTo(currentChapterId, currentKpIndex + 1, 'left');
+  } else {
+    // 本章最后一个，进入下一章第一个
+    showBoundaryModal(currentChapterId, 'next');
+  }
+}
+
+function goPrev() {
+  if (currentKpIndex > 0) {
+    navigateTo(currentChapterId, currentKpIndex - 1, 'right');
+  } else {
+    // 本章第一个，进入上一章最后一个
+    showBoundaryModal(currentChapterId, 'prev');
+  }
+}
+
+function jumpToKp(targetId) {
+  const target = KNOWLEDGE_POINTS.find(k => k.id === targetId);
+  if (!target) return;
+  const kps = getChapterKPs(target.chapterId);
+  const index = kps.findIndex(k => k.id === targetId);
+  if (index >= 0) {
+    navigateTo(target.chapterId, index, null);
+  }
+}
+
+// ===== 章节边界弹窗 =====
+function showBoundaryModal(fromChapterId, direction) {
+  const chapterOrder = CHAPTERS.map(c => c.id);
+  const currentPos = chapterOrder.indexOf(fromChapterId);
+  let targetChapterId;
+
+  if (direction === 'next' && currentPos < chapterOrder.length - 1) {
+    targetChapterId = chapterOrder[currentPos + 1];
+  } else if (direction === 'prev' && currentPos > 0) {
+    targetChapterId = chapterOrder[currentPos - 1];
+  } else {
+    return; // 已经是第一或最后一章，不弹窗
+  }
+
+  const targetChapter = CHAPTERS.find(c => c.id === targetChapterId);
+  const modal = document.getElementById('boundary-modal');
+  const message = document.getElementById('boundary-message');
+  const yesBtn = document.getElementById('boundary-yes');
+  const noBtn = document.getElementById('boundary-no');
+
+  message.textContent = `是否进入${targetChapter.title}（${targetChapter.subtitle}）？`;
+  modal.classList.remove('modal-hidden');
+
+  const cleanup = () => {
+    modal.classList.add('modal-hidden');
+    yesBtn.removeEventListener('click', onYes);
+    noBtn.removeEventListener('click', onNo);
+  };
+
+  const onYes = () => {
+    cleanup();
+    const targetKps = getChapterKPs(targetChapterId);
+    const targetIndex = direction === 'next' ? 0 : targetKps.length - 1;
+    navigateTo(targetChapterId, targetIndex, direction === 'next' ? 'left' : 'right');
+  };
+
+  const onNo = () => {
+    cleanup();
+  };
+
+  yesBtn.addEventListener('click', onYes);
+  noBtn.addEventListener('click', onNo);
+
+  // 点击遮罩关闭
+  modal.querySelector('.modal-overlay').addEventListener('click', onNo);
+}
+
+// ===== URL Hash =====
+function updateURL() {
+  const kp = getGlobalKP(currentChapterId, currentKpIndex);
+  if (kp) {
+    window.location.hash = kp.id;
+  }
+}
+
+function loadFromHash() {
+  const hash = window.location.hash.slice(1);
+  if (hash) {
+    const kp = KNOWLEDGE_POINTS.find(k => k.id === hash);
+    if (kp) {
+      const kps = getChapterKPs(kp.chapterId);
+      const index = kps.findIndex(k => k.id === hash);
+      if (index >= 0) {
+        currentChapterId = kp.chapterId;
+        currentKpIndex = index;
+      }
+    }
+  }
+}
+
+// ===== URL 变化监听（浏览器前进/后退） =====
+window.addEventListener('hashchange', () => {
+  loadFromHash();
+  renderChapterTabs();
+  renderKnowledgePoint();
+});
+```
+
+- [ ] **Step 2: 绑定事件监听器**
+
+```javascript
+// ===== 事件绑定 =====
+function bindEvents() {
+  // 章节标签点击
+  document.getElementById('chapter-tabs').addEventListener('click', e => {
+    const tab = e.target.closest('.chapter-tab');
+    if (!tab) return;
+    const chapterId = parseInt(tab.dataset.chapter);
+    if (chapterId === currentChapterId) return;
+    const kps = getChapterKPs(chapterId);
+    navigateTo(chapterId, 0, chapterId > currentChapterId ? 'left' : 'right');
+  });
+
+  // 箭头按钮
+  document.getElementById('btn-prev').addEventListener('click', goPrev);
+  document.getElementById('btn-next').addEventListener('click', goNext);
+
+  // 键盘
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') goPrev();
+    else if (e.key === 'ArrowRight') goNext();
+  });
+
+  // 相关知识链接点击
+  document.getElementById('related-links').addEventListener('click', e => {
+    const link = e.target.closest('.related-link');
+    if (!link) return;
+    jumpToKp(link.dataset.target);
+  });
+
+  // === 触屏滑动 ===
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  document.getElementById('card-container').addEventListener('touchstart', e => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.getElementById('card-container').addEventListener('touchend', e => {
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+    // 仅水平滑动超过50px且不是明显的垂直滚动
+    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      if (deltaX < 0) goNext();   // 左滑 = 下一个
+      else goPrev();               // 右滑 = 上一个
+    }
+  });
+}
+```
+
+- [ ] **Step 3: 编写初始化函数并调用**
+
+```javascript
+// ===== 初始化 =====
+function init() {
+  loadFromHash();
+  renderChapterTabs();
+  renderKnowledgePoint();
+  bindEvents();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+```
+
+- [ ] **Step 4: 验证** — 浏览器打开 `index.html`，测试点击章节标签、箭头按钮、键盘左右键、手机触屏滑动、章节边界弹窗、相关知识链接跳转
+
+---
+
+### Task 7: 实现预测题目生成引擎
+
+**Files:**
+- Modify: `C:\Users\12767\Desktop\高电压\index.html`（在 `<script>` 中 renderQuestions 函数位置）
+
+- [ ] **Step 1: 实现题目数量分配函数**
+
+```javascript
+// ===== 预测题目生成引擎 =====
+
+// 全局题目总数基准
+const GLOBAL_QUESTION_COUNTS = {
+  single: 10,   // 单选题
+  multi: 10,    // 多选题
+  judge: 10,    // 判断题
+  term: 5,      // 名词解释
+  short: 4,     // 简答题
+  essay: 8,     // 论述题（每章至少1道）
+};
+
+// 计算某章某种题型的题目数量
+function getChapterQuestionCount(chapterId, questionType) {
+  const chapter = CHAPTERS.find(c => c.id === chapterId);
+  if (!chapter) return 0;
+
+  if (questionType === 'essay') {
+    // 论述题：每章至少1道，重点章节（预测分≥10）2道
+    return chapter.predictScore >= 10 ? 2 : 1;
+  }
+
+  if (questionType === 'calc') {
+    // 计算题：仅第7、8章各1道
+    return (chapterId === 7 || chapterId === 8) ? 1 : 0;
+  }
+
+  const globalCount = GLOBAL_QUESTION_COUNTS[questionType] || 0;
+  const ratio = chapter.predictScore / TOTAL_PREDICT_SCORE;
+  const count = Math.round(globalCount * ratio);
+
+  // 至少0道（非常小的章节可能没有该题型）
+  return Math.max(0, count);
+}
+
+// 计算某章的总预测题目数（去除0道题型后，分配到知识点）
+function distributeQuestionsToKPs(chapterId) {
+  const kps = getChapterKPs(chapterId);
+  const questionTypes = ['single', 'multi', 'judge', 'term', 'short', 'essay', 'calc'];
+  
+  const distribution = {};
+
+  questionTypes.forEach(type => {
+    const totalForChapter = getChapterQuestionCount(chapterId, type);
+    if (totalForChapter === 0) return;
+
+    // 将该题型均匀分配到知识点头上
+    const perKp = Math.floor(totalForChapter / kps.length);
+    const remainder = totalForChapter % kps.length;
+
+    kps.forEach((kp, idx) => {
+      if (!distribution[kp.id]) distribution[kp.id] = {};
+      distribution[kp.id][type] = perKp + (idx < remainder ? 1 : 0);
+    });
+  });
+
+  return distribution;
+}
+```
+
+- [ ] **Step 2: 实现题目生成函数**
+
+```javascript
+// 根据知识点内容和题型生成具体题目
+function generateQuestionsForKp(kp, questionCounts) {
+  if (!questionCounts || Object.keys(questionCounts).length === 0) return [];
+  
+  const questions = [];
+  const title = kp.title;
+  const chapterId = kp.chapterId;
+
+  // 单选题
+  if (questionCounts.single > 0) {
+    for (let i = 0; i < questionCounts.single; i++) {
+      questions.push({
+        type: 'single',
+        typeLabel: '单选题（2分）',
+        content: generateSingleChoice(kp, i),
+      });
+    }
+  }
+
+  // 多选题
+  if (questionCounts.multi > 0) {
+    for (let i = 0; i < questionCounts.multi; i++) {
+      questions.push({
+        type: 'multi',
+        typeLabel: '多选题（3分）',
+        content: generateMultiChoice(kp, i),
+      });
+    }
+  }
+
+  // 判断题
+  if (questionCounts.judge > 0) {
+    for (let i = 0; i < questionCounts.judge; i++) {
+      questions.push({
+        type: 'judge',
+        typeLabel: '判断题（1分）',
+        content: generateJudgeQuestion(kp, i),
+      });
+    }
+  }
+
+  // 名词解释
+  if (questionCounts.term > 0) {
+    for (let i = 0; i < questionCounts.term; i++) {
+      questions.push({
+        type: 'term',
+        typeLabel: '名词解释（3分）',
+        content: generateTermQuestion(kp, i),
+      });
+    }
+  }
+
+  // 简答题
+  if (questionCounts.short > 0) {
+    for (let i = 0; i < questionCounts.short; i++) {
+      questions.push({
+        type: 'short',
+        typeLabel: '简答题（5分）',
+        content: generateShortQuestion(kp, i),
+      });
+    }
+  }
+
+  // 论述题
+  if (questionCounts.essay > 0) {
+    for (let i = 0; i < questionCounts.essay; i++) {
+      questions.push({
+        type: 'essay',
+        typeLabel: '论述题',
+        content: generateEssayQuestion(kp, i),
+      });
+    }
+  }
+
+  // 计算题（仅第7、8章）
+  if (questionCounts.calc > 0) {
+    for (let i = 0; i < questionCounts.calc; i++) {
+      questions.push({
+        type: 'calc',
+        typeLabel: '计算题（10分）',
+        content: generateCalcQuestion(kp, i),
+      });
+    }
+  }
+
+  return questions;
+}
+```
+
+- [ ] **Step 3: 实现各题型题目内容生成函数**
+
+```javascript
+// === 单选题生成 ===
+function generateSingleChoice(kp, variant) {
+  const templates = [
+    { q: `以下关于"${kp.title}"的描述，正确的是？`, opts: buildOptions(kp, 'single', variant) },
+    { q: `"${kp.title}"的定义中，不包含以下哪一项？`, opts: buildOptions(kp, 'single', variant) },
+    { q: `${kp.title}属于以下哪种类型/分类？`, opts: buildOptions(kp, 'single', variant) },
+  ];
+  const t = templates[variant % templates.length];
+  return { text: t.q, options: t.opts };
+}
+
+// === 多选题生成 ===
+function generateMultiChoice(kp, variant) {
+  const templates = [
+    { q: `下列关于"${kp.title}"的说法，正确的有？`, opts: buildOptions(kp, 'multi', variant) },
+    { q: `"${kp.title}"的特点包括？`, opts: buildOptions(kp, 'multi', variant) },
+    { q: `"${kp.title}"的适用条件/影响因素包括？`, opts: buildOptions(kp, 'multi', variant) },
+  ];
+  const t = templates[variant % templates.length];
+  return { text: t.q, options: t.opts };
+}
+
+// === 判断题生成 ===
+function generateJudgeQuestion(kp, variant) {
+  const templates = [
+    `"${kp.title}"仅适用于均匀电场条件下。`,
+    `"${kp.title}"与温度/气压无关。`,
+    `"${kp.title}"是一种自持放电/弹性极化/本征特性。`,
+    `${CHAPTERS.find(c => c.id === kp.chapterId)?.subtitle || ''}中的"${kp.title}"是不可逆过程。`,
+  ];
+  return { text: templates[variant % templates.length] };
+}
+
+// === 名词解释生成 ===
+function generateTermQuestion(kp, variant) {
+  const terms = extractKeyTerms(kp);
+  const term = terms[variant % terms.length] || kp.title;
+  return { text: `请解释：${term}` };
+}
+
+// === 简答题生成 ===
+function generateShortQuestion(kp, variant) {
+  const templates = [
+    `简述"${kp.title}"的基本概念和主要特点。`,
+    `简要说明"${kp.title}"的物理机制。`,
+    `简述"${kp.title}"与实际工程应用的关系。`,
+  ];
+  return { text: templates[variant % templates.length] };
+}
+
+// === 论述题生成 ===
+function generateEssayQuestion(kp, variant) {
+  const chapter = CHAPTERS.find(c => c.id === kp.chapterId);
+  const templates = [
+    `试述${chapter?.subtitle || ''}中"${kp.title}"的物理本质、影响因素及其在工程中的应用。`,
+    `论述"${kp.title}"的理论基础、发展过程及对不同工程场景的指导意义。`,
+  ];
+  return { text: templates[variant % templates.length] };
+}
+
+// === 计算题生成（仅第7、8章） ===
+function generateCalcQuestion(kp, variant) {
+  if (kp.chapterId === 7) {
+    const templates = [
+      `某输电线路波阻抗Z₁=400Ω，末端连接电缆波阻抗Z₂=50Ω。有一幅值为1000V的电压波从线路侵入，试求：(1)折射系数和反射系数；(2)进入电缆的电压波和电流波幅值；(3)线路上的反射电压波和反射电流波幅值。`,
+      `一直流电源E=100kV合闸于长度为300m、波阻抗Z=500Ω的架空线，末端开路（R=∞）。试分析：(1)末端电压波形；(2)线路中点L/2处的电压波形，并画出波形图。`,
+    ];
+    return { text: templates[variant % templates.length] };
+  } else if (kp.chapterId === 8) {
+    const templates = [
+      `某变电所配电构架高h_x=10m，宽12m，拟在构架旁5m处装设独立避雷针进行保护。试计算避雷针的最低高度。（设h≤30m时P=1）`,
+      `一条110kV输电线路，杆塔接地电阻为10Ω，线路绝缘的50%冲击闪络电压为700kV。当雷电流幅值为50kA的雷直击杆塔顶部时，试判断线路绝缘是否会发生闪络。`,
+    ];
+    return { text: templates[variant % templates.length] };
+  }
+  return { text: '' };
+}
+
+// === 辅助：构建选项 ===
+function buildOptions(kp, type, variant) {
+  // 根据知识点内容提取关键术语作为选项
+  const terms = extractKeyTerms(kp);
+  const otherTerms = extractOtherChapterTerms(kp);
+  const distractors = otherTerms.slice(variant * 4, variant * 4 + 3);
+
+  if (type === 'single') {
+    const options = [terms[0] || '选项A', ...distractors.slice(0, 3)];
+    if (options.length < 4) {
+      while (options.length < 4) options.push(`选项${String.fromCharCode(65 + options.length)}`);
+    }
+    return options.slice(0, 4).map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`);
+  } else {
+    const options = terms.slice(0, 2).concat(distractors.slice(0, 3));
+    return options.slice(0, 5).map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt}`);
+  }
+}
+
+function extractKeyTerms(kp) {
+  // 从知识点标题和内容中提取关键词
+  const div = document.createElement('div');
+  div.innerHTML = kp.content;
+  const text = (kp.title + ' ' + div.textContent).toLowerCase();
+
+  const allTerms = [
+    '气体介质', '液体介质', '固体介质', '外绝缘', '内绝缘', '电离', '热电离', '光电离',
+    '碰撞电离', '分级电离', '自由电子', '正离子', '负离子', '电子崩', '流注',
+    '先导', '自持放电', '击穿', '电晕放电', '极性效应', '空间电荷', '电场畸变',
+    '电子式极化', '离子式极化', '偶极子极化', '夹层极化', '弹性极化', '热击穿',
+    '电击穿', '绝缘电阻', '泄漏电流', '吸收比', '波阻抗', '折射系数', '反射系数',
+    '彼德逊法则', '避雷针', '避雷线', '避雷器', '耐雷水平', '雷击跳闸率',
+    '接地电阻', '接触电压', '跨步电压', '操作过电压', '暂时过电压', '绝缘配合',
+  ];
+
+  const found = allTerms.filter(t => text.includes(t.toLowerCase()));
+  return found.length > 0 ? found.slice(0, 5) : [kp.title];
+}
+
+function extractOtherChapterTerms(kp) {
+  const allTerms = [
+    '电介质', '极化', '击穿', '电晕', '流注', '汤逊', '巴申', '电子崩',
+    '避雷器', '接地', '绝缘子', '雷电', '过电压', '行波', '折射', '反射',
+    'SF₆', '吸收比', '泄漏电流', '绝缘电阻', '耐电强度', '绝缘水平',
+  ];
+  const div = document.createElement('div');
+  div.innerHTML = kp.content;
+  const text = (kp.title + ' ' + div.textContent).toLowerCase();
+  // 返回当前知识点未包含的术语（作为干扰项）
+  return allTerms.filter(t => !text.includes(t.toLowerCase()));
+}
+```
+
+- [ ] **Step 4: 实现 renderQuestions 函数**
+
+```javascript
+function renderQuestions(kp) {
+  const container = document.getElementById('questions-list');
+  const distribution = distributeQuestionsToKPs(kp.chapterId);
+  const questionCounts = distribution[kp.id] || {};
+
+  const questions = generateQuestionsForKp(kp, questionCounts);
+
+  if (questions.length === 0) {
+    container.innerHTML = '<p style="color:#999;font-size:0.85rem;">暂无预测题目</p>';
+    return;
+  }
+
+  // 按题型分组
+  const typeOrder = ['single', 'multi', 'judge', 'term', 'short', 'essay', 'calc'];
+  const grouped = {};
+  questions.forEach(q => {
+    if (!grouped[q.type]) grouped[q.type] = [];
+    grouped[q.type].push(q);
+  });
+
+  container.innerHTML = typeOrder.map(type => {
+    if (!grouped[type] || grouped[type].length === 0) return '';
+    const items = grouped[type];
+    const label = items[0].typeLabel;
+
+    const itemsHTML = items.map((q, i) => {
+      let html = `<div class="question-item">
+        <span class="q-num">${i + 1}.</span> ${q.content.text}`;
+
+      if (q.content.options) {
+        html += `<div class="options">${q.content.options.join('<br>')}</div>`;
+      }
+
+      html += `<div class="answer-hint">💡 提示：结合"${kp.title}"相关知识点作答</div>`;
+      html += `</div>`;
+      return html;
+    }).join('');
+
+    return `<div class="question-block">
+      <div class="question-type-label">📝 ${label}</div>
+      ${itemsHTML}
+    </div>`;
+  }).join('');
+}
+```
+
+- [ ] **Step 5: 验证** — 刷新页面，检查每个知识点的预测题目是否正确按分数分配，第7、8章是否各有计算题
+
+---
+
+### Task 8: 最终联调与测试
+
+**Files:**
+- Modify: `C:\Users\12767\Desktop\高电压\index.html`（检查所有内容完整性）
+
+- [ ] **Step 1: 功能测试清单**
+
+在浏览器中验证以下所有功能：
+
+1. **39个知识点完整性测试**
+   在控制台执行：`console.log(KNOWLEDGE_POINTS.length)` — 应为 39
+   在控制台执行：`CHAPTERS.map(c => ({id: c.id, count: KNOWLEDGE_POINTS.filter(k => k.chapterId === c.id).length}))`
+   预期：第1章11个、第2章5个、第3章3个、第4章3个、第5章4个、第7章5个、第8章5个、第9章3个
+
+2. **章节切换**：点击每个章节标签，确认跳转到该章第一个知识点
+
+3. **左右箭头**：点击←和→按钮，确认正常切换
+
+4. **键盘导航**：按←和→方向键，确认正常切换
+
+5. **触屏滑动**（手机或模拟器）：左滑下一个，右滑上一个
+
+6. **章节边界弹窗**：
+   - 第1章第1个知识点点← → 应不弹窗（已是第一章）
+   - 第9章最后一个知识点点→ → 应不弹窗（已是最后一章）
+   - 第1章最后一个知识点点→ → 弹窗"是否进入第二章"
+   - 第2章第1个知识点点← → 弹窗"是否进入第一章"
+
+7. **相关知识链接**：点击链接，确认跳转到目标知识点且章节自动切换
+
+8. **URL Hash**：在地址栏输入 `#1-7`，确认页面定位到流注理论
+
+9. **预测题目**：
+   - 第1章知识点应有较多题目（分数34分）
+   - 第7、8章知识点应有计算题
+   - 第3章知识点题目较少（3分）
+   - 第1章应有2道论述题（重点章）
+
+- [ ] **Step 2: 确认最终文件**
+
+```bash
+# 确认文件存在且大小合理
+ls -la "C:\Users\12767\Desktop\高电压\index.html"
+```
+
+- [ ] **Step 3: Commit（如使用git）**
+
+```bash
+cd "C:\Users\12767\Desktop\高电压"
+git init
+git add index.html
+git commit -m "feat: 高电压期末复习网站 v1.0 — 38个知识点、滑动切换、知识点链接、题目预测"
+```
