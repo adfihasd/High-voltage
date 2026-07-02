@@ -270,6 +270,48 @@
       color: var(--text-secondary);
     }
 
+    /* ===== 课后题区（课后题已嵌入正文，此区域隐藏） ===== */
+    #homework-section {
+      display: none;
+    }
+
+    .homework-item {
+      padding: 12px 16px;
+      background: #f8f4ec;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+
+    .homework-item .hw-num {
+      font-weight: 700;
+      color: var(--accent);
+      margin-right: 6px;
+    }
+
+    .homework-item .hw-text {
+      color: var(--text-primary);
+    }
+
+    .homework-item .hw-answer {
+      margin-top: 8px;
+      padding: 10px 14px;
+      background: #fefdf9;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      border: 1px dashed var(--border);
+      line-height: 1.8;
+    }
+
+    .homework-item .hw-answer-label {
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+
     /* ===== 预测题目 ===== */
     #questions-section {
       margin-top: 4px;
@@ -437,6 +479,35 @@
       background: var(--tag-bg);
     }
 
+    /* ===== 课后题样式 ===== */
+    .hw-problem {
+      background: #fef9f0;
+      border-left: 3px solid #c0392b;
+      padding: 12px 16px;
+      margin: 16px 0 8px;
+      border-radius: 0 6px 6px 0;
+    }
+
+    .hw-problem .hw-label {
+      font-weight: 700;
+      color: #c0392b;
+      font-size: 0.88rem;
+      margin-bottom: 6px;
+    }
+
+    .hw-problem .hw-q {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      font-size: 0.92rem;
+    }
+
+    .hw-problem .hw-a {
+      font-size: 0.86rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
     /* ===== 响应式 ===== */
     @media (max-width: 768px) {
       .nav-arrow {
@@ -497,6 +568,12 @@
 
             <!-- 知识点正文 -->
             <div id="kp-content"></div>
+
+            <!-- 课后题区 -->
+            <div id="homework-section">
+              <div class="section-title">课后题</div>
+              <div id="homework-list"></div>
+            </div>
 
             <!-- 相关知识链接区 -->
             <div id="related-section">
@@ -633,7 +710,8 @@
     <p>对于空气来说，这一pd值的临界值为<strong>26kPa·cm</strong>。</p>
     <p><strong>γ过程：</strong>由于阴极材料的表面逸出功比气体分子的电离能小很多，因而正离子碰撞阴极较易使阴极释放出电子。此外正负离子复合时以及分子由激励态跃迁回正常态时所产生光子到达阴极表面，都将引起阴极表面电离，统称为γ过程。γ过程与α过程共同构成汤逊自持放电条件 γ(e^(αd)−1)=1。γ过程中"光子到达阴极表面引起电离"与光电离（光子引起气体分子电离）同为光致电离，但作用对象不同：γ过程光子作用于阴极金属表面，光电离光子作用于气体分子。</p>
     <p><strong>汤逊理论适用范围：</strong>在低气压、pd较小的条件下适用（pd过小或过大，汤逊理论不再适用）。流注理论弥补了汤逊理论在pd较大时不适用的情况。</p>
-    <p><strong>巴申定律：</strong>击穿电压Ub与pd的关系曲线，即Ub = f(pd)。此定律由汤逊理论推导而来，描述均匀电场中击穿电压与气压和间隙距离乘积的关系。</p>`,
+    <p><strong>巴申定律：</strong>击穿电压Ub与pd的关系曲线，即Ub = f(pd)。此定律由汤逊理论推导而来，描述均匀电场中击穿电压与气压和间隙距离乘积的关系。</p>
+<div class="hw-problem"><p class="hw-label">📖 课后题 1-2</p><p class="hw-q">简要论述汤逊理论与流注理论。</p><p class="hw-a">答：汤逊理论适用于低气压、pd较小的条件，自持条件γ(e^(αd)−1)=1，未考虑空间电荷畸变和光子作用；流注理论适用于高气压、长气隙，自持条件e^(αd)=常数，考虑了空间电荷畸变电场和光电离的作用。两者适用条件互补，自持条件形式不同。</p></div>`,
         related: [
           { targetId: "1-5", title: "α系数与自持放电条件", desc: "汤逊自持放电条件的参数来源" },
           { targetId: "1-7", title: "流注理论", desc: "汤逊与流注理论适用条件互补" },
@@ -670,7 +748,8 @@
     <p>定义：在电晕放电时，由于高场强下电极极性的不同、空间电荷的极性也不同，对放电发展影响也就不同，这就造成了不同极性的高场强电极电晕起始电压的不同以及间隙击穿电压的不同，称为极性效应。</p>
     <p>比较Ub（击穿电压）：<strong>负棒-正板 > 棒-棒 > 正棒-负板</strong></p>
     <p>比较Uc（电晕起始电压）：<strong>正棒-负板 > 负棒-正板</strong></p>
-    <p>（Ub和Uc的大小顺序恰好相反，是极性效应的核心结论。）</p>`,
+    <p>（Ub和Uc的大小顺序恰好相反，是极性效应的核心结论。）</p>
+<div class="hw-problem"><p class="hw-label">📖 课后题 1-3</p><p class="hw-q">为什么棒-板间隙中棒为正极性时电晕起始电压比负极性时略高？</p><p class="hw-a">答：正极性时空间正电荷削弱了棒极附近的电场→电离减弱→电晕起始电压升高；负极性时空间正电荷加强了棒极附近电场→电离加强→电晕起始电压降低。因此正棒-负板Uc > 负棒-正板Uc。</p></div>`,
         related: [
           { targetId: "1-7", title: "流注理论", desc: "空间电荷畸变电场是极性效应的本质" },
           { targetId: "1-11", title: "操作冲击特点", desc: "操作冲击电压同样存在极性效应" },
@@ -699,7 +778,8 @@
         content: `<p><strong>雷电冲击电压的标准波形：</strong></p>
     <p>T₁ = 1.2(1±30%)μs（波前时间），T₂ = 50(1±20%)μs（半峰值时间）</p>
     <p>不同极性的标准雷电波形可表示为：<strong>+1.2/50 μs</strong> 或 <strong>−1.2/50 μs</strong></p>
-    <p>（第五章中电气设备内绝缘雷电冲击耐压试验用的就是此标准波形 1.2/50μs。）</p>`,
+    <p>（第五章中电气设备内绝缘雷电冲击耐压试验用的就是此标准波形 1.2/50μs。）</p>
+<div class="hw-problem"><p class="hw-label">📖 课后题 1-4</p><p class="hw-q">雷电冲击电压的标准波形是什么？</p><p class="hw-a">答：T₁=1.2(1±30%)μs（波前时间），T₂=50(1±20%)μs（半峰值时间），不同极性表示为 ±1.2/50 μs。</p></div>`,
         related: [
           { targetId: "1-11", title: "操作冲击特点", desc: "操作冲击波形与雷电冲击波形对比" },
           { targetId: "5-3", title: "工频、直流与冲击高压试验", desc: "冲击发生器产生标准雷电波形" },
@@ -721,7 +801,8 @@
     <li><strong>饱和现象</strong></li>
     <li><strong>分散性大</strong></li>
     <li><strong>邻近效应：</strong>接地物体靠近放电间隙会显著降低正极性击穿电压</li>
-    </ol>`,
+    </ol>
+	<div class="hw-problem"><p class="hw-label">📖 课后题 1-5</p><p class="hw-q">操作冲击放电电压的特点是什么？</p><p class="hw-a">答：共五点——① U形曲线（击穿电压与波前时间有关，与波尾时间无关）；② 极性效应（正极性50%击穿电压比负极性低）；③ 饱和现象；④ 分散性大；⑤ 邻近效应（接地物体靠近显著降低正极性击穿电压）。</p></div>`,
         related: [
           { targetId: "1-8", title: "电晕放电与极性效应", desc: "操作冲击和电晕放电的极性效应本质相同" },
           { targetId: "1-10", title: "冲击电压波形", desc: "操作冲击与雷电冲击波形对比" },
@@ -771,7 +852,8 @@
     <tr><td>偶极子极化</td><td>极性电介质</td><td>10⁻¹⁰~10⁻²s</td><td>有</td><td>偶极子定向排列</td></tr>
     <tr><td>夹层极化</td><td>多层介质交界面</td><td>10⁻¹s~数小时</td><td>有</td><td>自由电荷移动</td></tr>
     </table>
-    <p>从电子式→离子式→偶极子→夹层，所需时间递增；电子式和离子式为弹性极化无损耗，偶极子和夹层极化有损耗；极化时间的长短决定了第四章吸收比测试中不同时间测得不同电阻值。</p>`,
+    <p>从电子式→离子式→偶极子→夹层，所需时间递增；电子式和离子式为弹性极化无损耗，偶极子和夹层极化有损耗；极化时间的长短决定了第四章吸收比测试中不同时间测得不同电阻值。</p>
+<div class="hw-problem"><p class="hw-label">📖 课后题 2-1</p><p class="hw-q">什么是电介质的极化？电介质的极化基本形式有哪几种，各有什么特点？</p><p class="hw-a">答：极化是电介质在电场作用下束缚电荷产生弹性位移和偶极子取向的现象。四种基本形式：① 电子式极化（10⁻¹⁵s，无损耗，存在于一切电介质）；② 离子式极化（10⁻¹³s，几乎无损耗，离子式结构电介质）；③ 偶极子极化（10⁻¹⁰~10⁻²s，有损耗，极性电介质）；④ 夹层极化（10⁻¹s~数小时，有损耗，多层介质交界面）。详见上表。</p></div>`,
         related: [
           { targetId: "2-2", title: "极化基本型式", desc: "四种极化的前两种" },
           { targetId: "4-3", title: "吸收比", desc: "夹层极化是吸收比的物理基础" },
@@ -808,7 +890,8 @@
     <li>含气纯净液体介质的气泡击穿理论</li>
     <li>工程纯液体介质杂质击穿理论</li>
     </ol>
-    <p>（与第三章固体介质的三种击穿类型形成对照：液体有电击穿/气泡击穿/杂质击穿，固体有电击穿/热击穿/不均匀介质击穿。）</p>`,
+    <p>（与第三章固体介质的三种击穿类型形成对照：液体有电击穿/气泡击穿/杂质击穿，固体有电击穿/热击穿/不均匀介质击穿。）</p>
+<div class="hw-problem"><p class="hw-label">📖 课后题 2-6</p><p class="hw-q">目前液体电介质的击穿理论有哪些？</p><p class="hw-a">答：① 高度纯净去气液体介质的电击穿理论；② 含气纯净液体介质的气泡击穿理论；③ 工程纯液体介质的杂质击穿理论。</p></div>`,
         related: [
           { targetId: "1-5", title: "α系数与自持放电条件", desc: "自持放电条件即气体击穿的临界条件" },
           { targetId: "3-1", title: "热击穿", desc: "固体介质的击穿类型与液体对照" },
@@ -884,7 +967,8 @@
         title: "绝缘电阻与泄漏电流",
         content: `<p><strong>绝缘电阻：</strong>指绝缘材料在两个电极之间所表现出来的电阻，通常以欧姆（Ω）为单位，是一切电介质和绝缘结构绝缘状态最基本的综合特性参数，是反映绝缘性能最基本指标之一。通常规定加压1min时测得的电阻值作为该试品的绝缘电阻。</p>
 <p><strong>泄漏电流：</strong>原理与绝缘电阻相似，指通过绝缘材料的电流，所加直流电压比绝缘电阻测试时高得多。泄漏电流是绝缘材料性能的重要指标之一，因为它反映了绝缘材料导电性能和漏电性能。</p>
-<p>（泄漏电流与绝缘电阻本质上是同一物理现象的不同表述方式：电阻=电压/电流。）</p>`,
+<p>（泄漏电流与绝缘电阻本质上是同一物理现象的不同表述方式：电阻=电压/电流。）</p>
+<div class="hw-problem"><p class="hw-label">📖 课后题 4-2</p><p class="hw-q">分别给出绝缘电阻、泄漏电流和吸收比定义。</p><p class="hw-a">答：<strong>绝缘电阻</strong>—加压1min测得的电阻值，是最基本的绝缘特性参数；<strong>泄漏电流</strong>—通过绝缘材料的电流（加较高直流电压测得），反映导电和漏电性能；<strong>吸收比</strong>—K=R₆₀/R₁₅，取15s和60s时的绝缘电阻比值，用于检验绝缘是否受潮或存在局部缺陷。（见 → 吸收比知识点。）</p></div>`,
         related: [
           { targetId: "4-3", title: "吸收比", desc: "吸收比基于绝缘电阻的时变特性" },
           { targetId: "4-1", title: "预防性试验概述", desc: "绝缘电阻和泄漏电流是基本预防性试验" },
@@ -1041,7 +1125,8 @@
 <li>为了区别不同方向的行波，Z的前面应有正负号。</li>
 <li>如果导线上有前行波又有反行波，两波相遇时，总电压和总电流的比值不再等于波阻抗。</li>
 <li>波阻抗的数值Z只与导线单位长度的电感L₀和电容C₀有关，而与线路长度无关。（电阻R=ρ·L/S与长度有关，波阻抗与长度无关。）</li>
-</ol>`,
+</ol>
+<div class="hw-problem"><p class="hw-label">📖 课后题 7-2</p><p class="hw-q">分布参数电路的波阻抗与集中参数电路的电阻虽然有相同的量纲，但物理意义上有着本质的不同。</p><p class="hw-a">答：① 能量形式不同——波阻抗储存电磁能于介质中不消耗，电阻消耗有功功率；② 符号不同——波阻抗有正负号区别不同方向行波，电阻无方向性；③ 叠加特性不同——总电压/总电流≠Z，电阻两端U/I恒=R；④ 影响因素不同——波阻抗只与L₀、C₀有关与线路长度无关，电阻与长度成正比。详见上文四点区别。</p></div>`,
         related: [
           { targetId: "7-2", title: "波阻抗概念", desc: "波阻抗的定义和性质" },
           { targetId: "7-3", title: "行波折射反射", desc: "折射反射中波阻抗是关键参数" },
